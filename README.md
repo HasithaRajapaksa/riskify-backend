@@ -1,3 +1,4 @@
+
 # FastAPI Project Setup and Run Guide
 
 This document provides the steps to set up and run the FastAPI project locally.
@@ -37,3 +38,4 @@ This document provides the steps to set up and run the FastAPI project locally.
 ---
 
 Ensure you have the `.env` file with the necessary environment variables, such as `OPENAI_API_KEY`, in the project root directory.
+
