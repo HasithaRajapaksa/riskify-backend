@@ -278,3 +278,44 @@ async def process_and_send_to_chatgpt(file: UploadFile = File(...)):
     except Exception as e:
         logging.error("Error processing the uploaded file: %s", str(e))
         raise HTTPException(status_code=500, detail="Failed to process the file.")
+
+
+def will_project_be_delayed(activity_at_risk, delay_duration, critical_path, critical_path_duration, paths_durations):
+    """
+    Determines whether the risk in an activity will result in project delivery delay.
+
+    Args:
+        activity_at_risk (str): The activity that is at risk.
+        delay_duration (int): The expected delay caused by the risk.
+        critical_path (str): The critical path of the project.
+        critical_path_duration (int): The total duration of the critical path.
+        paths_durations (list of dict): A list of paths and their durations. Each item is a dictionary where the key is the path (comma-separated string) and the value is the duration (int).
+
+    Returns:
+        bool: True if the project delivery will be delayed, False otherwise.
+    """
+    # Check if the activity at risk is part of the critical path
+    critical_path_activities = critical_path.split(',')
+    if activity_at_risk in critical_path_activities:
+        return True
+
+    # Find all paths that contain the activity at risk
+    affected_paths = [path for path in paths_durations if activity_at_risk in path.split(',')]
+
+    if not affected_paths:
+        # If the activity at risk is not in any path, it won't affect the project delivery
+        return False
+
+    # Get the duration of each affected path
+    affected_durations = [paths_durations[path] for path in affected_paths]
+
+    # Find the maximum duration among the affected paths
+    max_affected_duration = max(affected_durations)
+
+    # Calculate the impact on the critical path duration
+    remaining_critical_duration = critical_path_duration - max_affected_duration
+
+    # Determine if the delay will affect project delivery
+    if delay_duration > remaining_critical_duration:
+        return True
+    return False
