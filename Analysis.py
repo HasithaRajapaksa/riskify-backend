@@ -300,7 +300,7 @@ async def calculate_critical_path(data: dict):
             critical_path_duration = int(critical_path_duration)
             delay_duration = int(delay_duration)
             paths_durations = {
-                path_data["path"]: int(path_data["duration"])
+                path_data["path"]: parse_duration(path_data["duration"])
                 for path_data in raw_paths
             }
         except (ValueError, KeyError) as e:
@@ -334,6 +334,27 @@ async def calculate_critical_path(data: dict):
         logging.error("Unexpected error during calculations: %s", str(e))
         raise HTTPException(status_code=500, detail="Failed to perform calculations.")
 
+def parse_duration(duration: str) -> int:
+    """
+    Parse and evaluate the duration string. Supports direct integers
+    and expressions like "8 + 10 + 10 = 38".
+    """
+    try:
+        # Check for "=" and split the expression
+        if "=" in duration:
+            expression, total = duration.split("=")
+            # Evaluate the left-hand side of the expression
+            evaluated_total = eval(expression.strip())
+            # Validate against the provided total
+            if evaluated_total != int(total.strip()):
+                raise ValueError(f"Mismatch in evaluated and provided total: {evaluated_total} != {total.strip()}")
+            return evaluated_total
+        else:
+            # Directly return as integer if no expression is found
+            return int(duration.strip())
+    except Exception as e:
+        logging.error(f"Failed to parse duration '{duration}': {e}")
+        raise HTTPException(status_code=400, detail=f"Invalid duration format: {duration}")
 
 def will_project_be_delayed(activity_at_risk, delay_duration, critical_path, critical_path_duration, paths_durations):
     """
