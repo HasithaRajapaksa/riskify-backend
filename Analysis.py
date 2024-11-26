@@ -251,10 +251,20 @@ async def process_and_send_to_chatgpt(file: UploadFile = File(...)):
         chatgpt_response = response.json()
         logging.info("ChatGPT API response:\n%s", chatgpt_response)
 
+        # Extract only the 'content' from the ChatGPT response
+        if "choices" in chatgpt_response and len(chatgpt_response["choices"]) > 0:
+            content = chatgpt_response["choices"][0]["message"]["content"]
+        else:
+            logging.error("Invalid response structure from ChatGPT API.")
+            raise HTTPException(
+                status_code=500,
+                detail="Invalid response structure from ChatGPT API."
+            )
+
+        # Return the response content
         return {
             "message": "Prompt processed successfully.",
-            "chatgpt_response": chatgpt_response,
-            "prompt": prompt,  # Optionally include the prompt for debugging
+            "data": content,
         }
 
     except Exception as e:
