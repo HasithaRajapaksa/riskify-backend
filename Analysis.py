@@ -249,6 +249,13 @@ async def process_and_send_to_chatgpt(file: UploadFile = File(...)):
             content = chatgpt_response["choices"][0]["message"]["content"]
             # Extract the critical path from the content
             critical_path = content.split("critical path: ")[1].split("\n")[0]
+            # Extract the critical path duration from the content
+            critical_path_duration = content.split("critical path duration: ")[1].split("\n")[0]
+            # Extract paths and their durations
+            paths = [
+            {"path": line.split(" -> ")[0], "duration": line.split(" -> ")[1]}
+                for line in content.split("\n") if " -> " in line
+            ]
         else:
             logging.error("Invalid response structure from ChatGPT API.")
             raise HTTPException(
@@ -263,6 +270,8 @@ async def process_and_send_to_chatgpt(file: UploadFile = File(...)):
             "message": "Prompt processed successfully.",
             "data": content,
             "critical_path": critical_path,
+            "critical_path_duration": critical_path_duration,
+            "paths": paths,
             "data_preview": data_preview,
         }
 
