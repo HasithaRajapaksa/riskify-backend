@@ -438,7 +438,9 @@ def analyze_project_risk(activity_at_risk, delay_duration, critical_path, critic
 
     if not is_delayed:
         return [
-            f"The activity '{activity_at_risk}' is at risk, but it will not affect the final delivery date. Even if this activity is delayed or moved to another sprint, the project timeline remains intact, so you can continue with your current plan without any changes."
+            f"Even though the activity '{activity_at_risk}' is at risk, it will not affect the final delivery date."
+            f" Thus, even if this activity is delayed or moved to another sprint, the project timeline remains intact,"
+            f" so you can continue with your current plan without any changes."
         ]
 
     # If the project will be delayed, suggest mitigation strategies
