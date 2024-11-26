@@ -247,6 +247,8 @@ async def process_and_send_to_chatgpt(file: UploadFile = File(...)):
         # Extract only the 'content' from the ChatGPT response
         if "choices" in chatgpt_response and len(chatgpt_response["choices"]) > 0:
             content = chatgpt_response["choices"][0]["message"]["content"]
+            # Extract the critical path from the content
+            critical_path = content.split("critical path: ")[1].split("\n")[0]
         else:
             logging.error("Invalid response structure from ChatGPT API.")
             raise HTTPException(
@@ -254,10 +256,14 @@ async def process_and_send_to_chatgpt(file: UploadFile = File(...)):
                 detail="Invalid response structure from ChatGPT API."
             )
 
+        data_preview = df.to_dict(orient="records")
+
         # Return the response content
         return {
             "message": "Prompt processed successfully.",
             "data": content,
+            "critical_path": critical_path,
+            "data_preview": data_preview,
         }
 
     except Exception as e:
