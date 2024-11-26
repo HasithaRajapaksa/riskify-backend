@@ -280,38 +280,58 @@ async def process_and_send_to_chatgpt(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail="Failed to process the file.")
 
 
-
-
 @app.post("/calculate")
 async def calculate_critical_path(data: dict):
     """
     Endpoint to receive critical path data, perform calculations, and return the results.
     """
     try:
-        # Log the received data
-        logging.info("Received data: %s", data)
-
-        # Extract data from the request
+        # Validate and extract data
         critical_path = data.get("critical_path")
         critical_path_duration = data.get("critical_path_duration")
-        paths = data.get("paths")
-        data_preview = data.get("data_preview")
+        raw_paths = data.get("paths")
+        activity_at_risk = data.get("activity_at_risk")
+        delay_duration = data.get("delay_duration")
+
+        if not all([critical_path, critical_path_duration, raw_paths, activity_at_risk, delay_duration]):
+            raise HTTPException(status_code=400, detail="Missing required input data.")
+
+        try:
+            critical_path_duration = int(critical_path_duration)
+            delay_duration = int(delay_duration)
+            paths_durations = {
+                path_data["path"]: int(path_data["duration"])
+                for path_data in raw_paths
+            }
+        except (ValueError, KeyError) as e:
+            logging.error(f"Invalid input format: {e}")
+            raise HTTPException(status_code=400, detail="Invalid input format. Ensure all durations are integers.")
 
         # Log the extracted data
         logging.info("Critical Path: %s", critical_path)
         logging.info("Critical Path Duration: %s", critical_path_duration)
-        logging.info("Paths: %s", paths)
-        logging.info("Data Preview: %s", data_preview)
+        logging.info("Paths: %s", paths_durations)
+        logging.info("Activity at Risk: %s", activity_at_risk)
+        logging.info("Delay Duration: %s", delay_duration)
 
+        # Analyze project risk
+        suggestions = analyze_project_risk(
+            activity_at_risk,
+            delay_duration,
+            critical_path,
+            critical_path_duration,
+            paths_durations
+        )
 
-
-        # Return the calculated results
         return {
-            "message": "Calculations completed successfully.",
+            "message": "Risk analysis completed successfully.",
+            "suggestions": suggestions
         }
 
+    except HTTPException as e:
+        raise e
     except Exception as e:
-        logging.error("Error during calculations: %s", str(e))
+        logging.error("Unexpected error during calculations: %s", str(e))
         raise HTTPException(status_code=500, detail="Failed to perform calculations.")
 
 
@@ -354,3 +374,93 @@ def will_project_be_delayed(activity_at_risk, delay_duration, critical_path, cri
     if delay_duration > remaining_critical_duration:
         return True
     return False
+
+def analyze_project_risk(activity_at_risk, delay_duration, critical_path, critical_path_duration, paths_durations):
+    """
+    Analyzes the risk of delay for a project and provides actionable suggestions based on the risk.
+
+    Args:
+        activity_at_risk (str): The activity that is at risk.
+        delay_duration (int): The expected delay caused by the risk.
+        critical_path (str): The critical path of the project.
+        critical_path_duration (int): The total duration of the critical path.
+        paths_durations (dict): A dictionary where the key is the path (comma-separated string) and the value is the duration (int).
+
+    Returns:
+        list of str: Suggestions or conclusions based on the analysis.
+    """
+    if delay_duration <= 0:
+        raise ValueError("Delay duration must be greater than 0.")
+
+    def find_activities_with_buffer(delay_duration, paths_durations, critical_path_duration):
+        """
+        Finds activities that can be delayed without affecting the critical path.
+
+        Args:
+            delay_duration (int): The expected delay.
+            paths_durations (dict): Paths and their durations.
+            critical_path_duration (int): Total critical path duration.
+
+        Returns:
+            list of str: Activities with sufficient buffer, ensuring they do not affect other paths.
+        """
+        # Step 1: Identify all paths with sufficient buffer
+        paths_with_buffer = {
+            path: critical_path_duration - duration
+            for path, duration in paths_durations.items()
+            if (critical_path_duration - duration) > delay_duration
+        }
+
+        # Step 2: Identify candidate non-critical activities from paths with buffer
+        candidate_activities = set()
+        for path in paths_with_buffer.keys():
+            candidate_activities.update(path.split(','))
+
+        # Step 3: Verify that these activities do not negatively impact other paths
+        non_critical_activities = set()
+        for activity in candidate_activities:
+            activity_safe = True
+            for path, duration in paths_durations.items():
+                if activity in path.split(','):
+                    remaining_critical_duration = critical_path_duration - duration
+                    if remaining_critical_duration <= delay_duration:
+                        activity_safe = False
+                        break
+            if activity_safe:
+                non_critical_activities.add(activity)
+
+        return list(non_critical_activities)
+
+    # Determine if the project will be delayed
+    is_delayed = will_project_be_delayed(
+        activity_at_risk, delay_duration, critical_path, critical_path_duration, paths_durations
+    )
+
+    if not is_delayed:
+        return [
+            f"The activity '{activity_at_risk}' is at risk, but it will not affect the final delivery date. Even if this activity is delayed or moved to another sprint, the project timeline remains intact, so you can continue with your current plan without any changes."
+        ]
+
+    # If the project will be delayed, suggest mitigation strategies
+    suggestions = [
+        f"The delay in activity '{activity_at_risk}' will result in the project being delayed. Take suitable action:",
+        "Consider the following options:"
+    ]
+
+    # Find activities that can be paused or reallocated
+    buffer_activities = find_activities_with_buffer(delay_duration, paths_durations, critical_path_duration)
+
+    if buffer_activities:
+        suggestions.append(
+            f"1. Reallocate resources from the following non-critical activities to address the delay: {', '.join(buffer_activities)} if possible."
+        )
+    else:
+        suggestions.append("1. No non-critical activities have sufficient buffer. Consider hiring temporary resources if possible.")
+
+    # Other general suggestions
+    suggestions.extend([
+        "2. Omit unnecessary requirements from the project scope and allocate those resources to critical tasks.",
+        "3. Motivate employees to expedite the work by offering incentives, such as bonuses for early delivery.",
+    ])
+
+    return suggestions
