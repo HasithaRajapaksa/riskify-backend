@@ -278,3 +278,38 @@ async def process_and_send_to_chatgpt(file: UploadFile = File(...)):
     except Exception as e:
         logging.error("Error processing the uploaded file: %s", str(e))
         raise HTTPException(status_code=500, detail="Failed to process the file.")
+
+
+
+
+@app.post("/calculate")
+async def calculate_critical_path(data: dict):
+    """
+    Endpoint to receive critical path data, perform calculations, and return the results.
+    """
+    try:
+        # Log the received data
+        logging.info("Received data: %s", data)
+
+        # Extract data from the request
+        critical_path = data.get("critical_path")
+        critical_path_duration = data.get("critical_path_duration")
+        paths = data.get("paths")
+        data_preview = data.get("data_preview")
+
+        # Log the extracted data
+        logging.info("Critical Path: %s", critical_path)
+        logging.info("Critical Path Duration: %s", critical_path_duration)
+        logging.info("Paths: %s", paths)
+        logging.info("Data Preview: %s", data_preview)
+
+
+
+        # Return the calculated results
+        return {
+            "message": "Calculations completed successfully.",
+        }
+
+    except Exception as e:
+        logging.error("Error during calculations: %s", str(e))
+        raise HTTPException(status_code=500, detail="Failed to perform calculations.")
