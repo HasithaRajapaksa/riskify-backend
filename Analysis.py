@@ -202,22 +202,15 @@ async def process_and_send_to_chatgpt(file: UploadFile = File(...)):
 
         # Construct the ChatGPT prompt
         prompt = (
-            "Find the list of activities in the critical path and the list of activities in the least critical path. "
-            "Ensure to provide the final answer in below format.\n"
-            "Critical Path Activities: Activities as comma separated values\n"
-            "Least critical path activities: Activities as comma separated values\n"
+            "Determine the critical path for a project based on the following task details. The critical path is defined as the sequence of tasks with the longest total duration, and any delay in these tasks will directly delay the project. "
+            "Find the list of activities in the critical path. "
             "Details will be provided in the following order: Task ID, Task Name, Duration, Dependencies. "
             "If there are no dependencies, this will be indicated with the word ‘No’.\n"
             f"{prompt_table}\n"
-            "Note: Consider the least critical path as the path whose total float addition is the highest."
-            "Ensure that we get in the following format without any other details and not required a additional description.\n"
-            "Critical Path Activities: Activities as comma separated values\n"
-            "Least critical path activities: Activities as comma separated values\n"
-            "Critical path is the longest path of activities whose float is 0."
+            "Ensure that we get the answer in the below format without any other details and not required a additional description.\n"
+            "First provide possible paths from start to finish along with the total duration of each path. Provide the path as comma separated values and do not show calculation. The largest duration path is critical path. The least duration path is the least critical path."
+            "Provide the final answer as critical path : then provide the critical path activities. Provide these activities as comma separated values. Then say critical path duration: and provide the duration of the critical path."
         )
-
-        # prompt = """ Find the list of activities in the critical path and the list of activities in the least critical path. ( By path ID) Ensure to provide the final answer in below format. o Critical Path Activities: Activities as comma separated values o Least critical path activities: Activities as comma separated values Details will be provided in the following order: Task ID, Task Name, Duration, Dependencies. If there are no dependencies, this will be indicated with the word ‘No’. o A -> Task 1 -> 5 -> No o B -> Task 2 -> 8 -> A o C -> Task 3 -> 6 -> A o D -> Task 4 -> 8 -> C o E -> Task 5 -> 12 -> B o F -> Task 6 -> 7 -> B o G -> Task 7 -> 10 -> D,F o H -> Task 8 -> 8 -> E,G Note: Consider the least critical path as the path whose total float addition is the highest. only provide the final answer with critical path and least critical path activities as comma separated values. """
-
 
         # Log the final prompt
         logging.info("Final ChatGPT prompt:\n%s", prompt)
